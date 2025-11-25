@@ -341,7 +341,8 @@ export default function PublicCalendar() {
                 })}
               </div>
             </div>
-          )})}
+          );
+          })}
         </div>
       );
     };
