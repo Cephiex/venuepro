@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getPublicCalendarData } from '@/functions/getPublicCalendarData';
 import { Card, CardContent } from "@/components/ui/card";
@@ -267,7 +266,9 @@ export default function PublicCalendar() {
       }
       
       const groupedBookings = upcomingBookings.reduce((acc, booking) => {
-        const dateKey = format(new Date(booking.start_datetime), 'yyyy-MM-dd');
+        const startDate = new Date(booking.start_datetime);
+        // Use local date components to avoid timezone issues
+        const dateKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
         if (!acc[dateKey]) {
             acc[dateKey] = [];
         }
@@ -277,11 +278,15 @@ export default function PublicCalendar() {
 
       return (
         <div className="space-y-6">
-          {Object.entries(groupedBookings).map(([date, dateBookings]) => (
+          {Object.entries(groupedBookings).map(([date, dateBookings]) => {
+            // Parse the date key back to a proper date for display
+            const [year, month, day] = date.split('-').map(Number);
+            const displayDate = new Date(year, month - 1, day);
+            return (
             <div key={date}>
               <div className="sticky top-[70px] bg-gray-50/90 backdrop-blur-sm z-10 py-2 mb-3 border-b-2 border-slate-200">
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                  {format(new Date(date), "EEEE, MMMM d, yyyy")}
+                  {format(displayDate, "EEEE, MMMM d, yyyy")}
                 </h2>
               </div>
               <div className="space-y-3 sm:space-y-4">
