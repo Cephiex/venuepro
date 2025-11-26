@@ -744,6 +744,34 @@ Tasks:
                             </CardContent>
                         </Card>
                         
+                        {/* Google Calendar Integration */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Google Calendar Integration</CardTitle>
+                                <CardDescription>Connect your Google Calendar to sync bookings automatically.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="flex items-start gap-3">
+                                        <CalendarIcon className="w-5 h-5 text-blue-600 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-medium text-blue-800">Sync with Google Calendar</p>
+                                            <p className="text-sm text-blue-700 mt-1">
+                                                Connect your Google account to automatically sync approved bookings to your Google Calendar.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button 
+                                    onClick={() => window.location.href = base44.connectors.getAuthorizationUrl('googlecalendar')}
+                                    className="w-full"
+                                >
+                                    <Link2 className="w-4 h-4 mr-2" />
+                                    Connect Google Calendar
+                                </Button>
+                            </CardContent>
+                        </Card>
+
                         {/* Kiosk Calendar Integration */}
                         <Card>
                             <CardHeader><CardTitle>Kiosk Calendar Display</CardTitle><CardDescription>A minimal month-view calendar perfect for kiosks, lobby displays, and embedding without any navigation or headers.</CardDescription></CardHeader>
