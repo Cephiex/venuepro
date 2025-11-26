@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Organization, Room, Booking, Building } from '@/entities/all';
 import { UploadFile, InvokeLLM } from '@/integrations/Core';
 import { processCsvWithAI } from '@/functions/processCsvWithAI';
@@ -12,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UploadCloud, Download, AlertTriangle, CheckCircle, Globe, Copy, Check, CalendarIcon, Trash2, Tv2 } from 'lucide-react';
+import { Loader2, UploadCloud, Download, AlertTriangle, CheckCircle, Globe, Copy, Check, CalendarIcon, Trash2, Tv2, Link2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import { createPageUrl } from "@/utils";
 
 export default function SettingsPage() {
