@@ -140,7 +140,7 @@ export default function PublicEventsScroller() {
                         })}
                     </div>
                 </div>
-            );
+                );
             })}
         </div>
     );
