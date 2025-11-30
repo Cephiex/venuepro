@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Booking, Room, User, Building } from '@/entities/all';
+import React, { useState, useEffect } from 'react';
+import { Booking, Room, User, Building, Organization } from '@/entities/all';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   BarChart,
@@ -38,6 +39,7 @@ const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'
 export default function ReportsPage() {
   const [bookings, setBookings] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [building, setBuilding] = useState(null);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,14 +78,16 @@ export default function ReportsPage() {
   const loadData = async (buildingId) => {
     setIsLoading(true);
     try {
-      const [bookingsData, roomsData, buildingData] = await Promise.all([
+      const [bookingsData, roomsData, buildingData, orgsData] = await Promise.all([
         Booking.filter({ building_id: buildingId }, '-created_date'),
         Room.filter({ building_id: buildingId }),
-        Building.get(buildingId)
+        Building.get(buildingId),
+        Organization.filter({ building_id: buildingId })
       ]);
       setBookings(bookingsData);
       setRooms(roomsData);
       setBuilding(buildingData);
+      setOrganizations(orgsData);
     } catch (error) {
       console.error("Error loading data:", error);
     }
@@ -168,6 +172,26 @@ export default function ReportsPage() {
       bookings: roomBookings.length,
       hours: Math.round(totalHours * 10) / 10,
       revenue: roomBookings.reduce((sum, b) => sum + (b.total_cost || 0), 0)
+    };
+  }).sort((a, b) => b.bookings - a.bookings);
+
+  // Organization utilization
+  const orgUtilization = organizations.map(org => {
+    const orgBookings = filteredBookings.filter(b => 
+      b.status === 'approved' && b.organization_id === org.id
+    );
+    const totalHours = orgBookings.reduce((sum, booking) => {
+      const start = parseISO(booking.start_datetime);
+      const end = parseISO(booking.end_datetime);
+      return sum + (end - start) / (1000 * 60 * 60);
+    }, 0);
+    
+    return {
+      name: org.name,
+      color: org.color || '#3b82f6',
+      bookings: orgBookings.length,
+      hours: Math.round(totalHours * 10) / 10,
+      revenue: orgBookings.reduce((sum, b) => sum + (b.total_cost || 0), 0)
     };
   }).sort((a, b) => b.bookings - a.bookings);
 
@@ -526,27 +550,98 @@ export default function ReportsPage() {
 
           {/* Room Utilization Tab */}
           <TabsContent value="utilization" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Room Utilization Comparison</CardTitle>
-                <CardDescription>Booking frequency and hours used per room</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={roomUtilization}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="bookings" fill="#3b82f6" name="Number of Bookings" />
-                    <Bar yAxisId="right" dataKey="hours" fill="#10b981" name="Hours Booked" />
-                  </BarChart>
-                </ResponsiveContainer>
-                <div className="mt-6">
-                  <h4 className="font-semibold mb-4">Detailed Room Statistics</h4>
-                  <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Room Utilization Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Room Utilization</CardTitle>
+                  <CardDescription>Booking frequency and hours used per room</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={roomUtilization}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} fontSize={11} />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="bookings" fill="#3b82f6" name="Bookings" />
+                      <Bar yAxisId="right" dataKey="hours" fill="#10b981" name="Hours" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Organization Utilization Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Organization Utilization</CardTitle>
+                  <CardDescription>Booking activity by organization</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={orgUtilization}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} fontSize={11} />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="bookings" fill="#8b5cf6" name="Bookings" />
+                      <Bar yAxisId="right" dataKey="hours" fill="#f59e0b" name="Hours" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Day of Week Utilization */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bookings by Day of Week</CardTitle>
+                  <CardDescription>Which days are most popular</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dayOfWeekData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="bookings" fill="#ec4899" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Peak Hours */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Peak Booking Hours</CardTitle>
+                  <CardDescription>Most popular times for bookings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={peakHoursData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="bookings" fill="#06b6d4" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Detailed Statistics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detailed Room Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
                     {roomUtilization.map((room, index) => (
                       <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                         <div className="flex items-center gap-4">
@@ -575,9 +670,52 @@ export default function ReportsPage() {
                       Export Room Data
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detailed Organization Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {orgUtilization.map((org, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div 
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: org.color + '20' }}
+                          >
+                            <div 
+                              className="w-4 h-4 rounded-full"
+                              style={{ backgroundColor: org.color }}
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{org.name}</p>
+                            <p className="text-sm text-slate-600">{org.bookings} bookings • {org.hours} hours</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-slate-900">${org.revenue.toFixed(2)}</p>
+                          <p className="text-sm text-slate-600">Revenue</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportToCSV(orgUtilization, 'organization_utilization')}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Organization Data
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Financial Tab */}
