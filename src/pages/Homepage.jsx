@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { User } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -79,9 +80,9 @@ export default function Homepage() {
     checkAuthAndRedirect();
   }, [navigate]);
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     // This is the main call to action for new/logged-out users.
-    await User.loginWithRedirect(window.location.origin + createPageUrl("Dashboard"));
+    base44.auth.redirectToLogin(createPageUrl("Dashboard"));
   };
   
   if (isLoading) {
