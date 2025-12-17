@@ -1,16 +1,17 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { User } from "@/entities/User";
+import { User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
+  Building2, 
   Users, 
   Calendar, 
   Wrench,
   ShieldCheck,
-  Zap
+  Zap,
+  LogIn
 } from "lucide-react";
 
 const features = [
