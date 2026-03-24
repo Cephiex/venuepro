@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, MoreVertical, Eye, CheckCircle, XCircle, Edit, Trash2, Calendar, MapPin, Repeat } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 import { format } from 'date-fns';
 import BookingForm from '../components/bookings/BookingForm';
 import BookingDetails from '../components/bookings/BookingDetails';
