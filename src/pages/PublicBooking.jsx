@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { SendEmail } from '@/integrations/Core';
 import { getPublicBookingData } from '@/functions/getPublicBookingData';
@@ -250,7 +249,7 @@ export default function PublicBookingPage() {
                     return room?.name || 'Unknown Room';
                 }).join(', ');
                 
-                const manageUrl = `${window.location.origin}${createPageUrl(`ManageBooking?token=${createdBooking.public_token}`)}`;
+                const manageUrl = `https://venumgmt.pro${createPageUrl(`ManageBooking?token=${createdBooking.public_token}`)}`;
                 
                 const emailSubject = `Booking Confirmation: ${formData.event_title}`;
                 const emailBody = `

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Booking, Room, User, Organization, Building } from '@/entities/all';
 import { SendEmail } from '@/integrations/Core';
@@ -257,7 +256,7 @@ export default function BookingsPage() {
       }
 
       const roomNames = getRoomNames(booking.rooms);
-      const bookingUrl = `${window.location.origin}${window.location.pathname}?tab=pending`;
+      const bookingUrl = `https://venumgmt.pro${createPageUrl('Bookings?tab=pending')}`;
 
       const subject = `New Booking Request: ${booking.event_title}`;
       const body = `

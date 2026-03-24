@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Booking, Room, User, Organization, Building } from "@/entities/all";
 import { Card, CardContent } from "@/components/ui/card";
@@ -285,7 +284,7 @@ export default function Calendar() {
       }
 
       const roomNames = Array.isArray(booking.rooms) ? booking.rooms.map(roomId => getRoomName(roomId)).join(', ') : 'N/A';
-      const bookingUrl = `${window.location.origin}${createPageUrl('Bookings?tab=pending')}`;
+      const bookingUrl = `https://venumgmt.pro${createPageUrl('Bookings?tab=pending')}`;
 
       const subject = `New Booking Request: ${booking.event_title}`;
       const body = `
