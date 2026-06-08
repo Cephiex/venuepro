@@ -1,0 +1,114 @@
+{
+  "name": "Booking",
+  "type": "object",
+  "properties": {
+    "building_id": {
+      "type": "string",
+      "description": "The ID of the building this booking belongs to"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID of the member organization"
+    },
+    "organization_name": {
+      "type": "string",
+      "description": "Name of the member organization"
+    },
+    "organization_color": {
+      "type": "string",
+      "description": "Color of the organization for calendar events"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Primary contact person"
+    },
+    "contact_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Contact email"
+    },
+    "contact_phone": {
+      "type": "string",
+      "description": "Contact phone number"
+    },
+    "event_title": {
+      "type": "string",
+      "description": "Name of the event"
+    },
+    "event_description": {
+      "type": "string",
+      "description": "Event details"
+    },
+    "rooms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of room IDs"
+    },
+    "start_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event start date and time"
+    },
+    "end_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event end date and time"
+    },
+    "expected_attendance": {
+      "type": "number",
+      "description": "Expected number of attendees"
+    },
+    "special_requirements": {
+      "type": "string",
+      "description": "Any special setup or requirements"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Booking status"
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Total booking cost"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal admin notes"
+    },
+    "recurring_id": {
+      "type": "string",
+      "description": "A unique ID to group recurring bookings together."
+    },
+    "public_token": {
+      "type": "string",
+      "description": "Unique token for public access to edit/cancel booking"
+    },
+    "is_public_booking": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this was created via public booking form"
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a reminder email has been sent for this booking"
+    }
+  },
+  "required": [
+    "building_id",
+    "organization_name",
+    "contact_email",
+    "event_title",
+    "rooms",
+    "start_datetime",
+    "end_datetime"
+  ]
+}

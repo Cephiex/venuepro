@@ -1,0 +1,98 @@
+{
+  "name": "Organization",
+  "type": "object",
+  "properties": {
+    "building_id": {
+      "type": "string",
+      "description": "The ID of the building this organization belongs to"
+    },
+    "name": {
+      "type": "string",
+      "description": "Organization name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Organization description"
+    },
+    "contact_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Primary contact email"
+    },
+    "contact_phone": {
+      "type": "string",
+      "description": "Primary contact phone"
+    },
+    "address": {
+      "type": "string",
+      "description": "Organization address"
+    },
+    "website": {
+      "type": "string",
+      "description": "Organization website"
+    },
+    "membership_type": {
+      "type": "string",
+      "enum": [
+        "premium",
+        "standard",
+        "basic"
+      ],
+      "default": "standard",
+      "description": "Membership tier"
+    },
+    "allowed_rooms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of room IDs this organization can book"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether organization is active"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Admin notes about the organization"
+    },
+    "color": {
+      "type": "string",
+      "description": "A hex color code for the organization to be displayed on calendars.",
+      "default": "#3b82f6"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL of the organization's logo image"
+    }
+  },
+  "required": [
+    "building_id",
+    "name",
+    "contact_email"
+  ],
+  "rls": {
+    "read": {
+      "building_id": "{{user.building_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "id": {
+            "$in": "{{user.organization_ids}}"
+          }
+        }
+      ]
+    },
+    "write": {
+      "building_id": "{{user.building_id}}",
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

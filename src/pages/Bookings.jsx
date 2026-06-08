@@ -19,7 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, MoreVertical, Eye, CheckCircle, XCircle, Edit, Trash2, Calendar, MapPin, Repeat } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, MoreVertical, Eye, CheckCircle, XCircle, Edit, Trash2, Calendar, MapPin, Repeat, X } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { format } from 'date-fns';
 import BookingForm from '../components/bookings/BookingForm';
@@ -44,6 +45,8 @@ export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [user, setUser] = useState(null);
   const [userOrganizations, setUserOrganizations] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isBulkCancelling, setIsBulkCancelling] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -332,6 +335,43 @@ ${building.name} Management System
     return getFilteredBookings(status).length;
   };
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (bookingsList) => {
+    if (bookingsList.every(b => selectedIds.has(b.id))) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        bookingsList.forEach(b => next.delete(b.id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        bookingsList.forEach(b => next.add(b.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkCancel = async () => {
+    if (!window.confirm(`Cancel ${selectedIds.size} selected booking(s)? This cannot be undone.`)) return;
+    setIsBulkCancelling(true);
+    try {
+      await Promise.all([...selectedIds].map(id => Booking.update(id, { status: 'cancelled' })));
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error) {
+      console.error("Error bulk cancelling bookings:", error);
+    }
+    setIsBulkCancelling(false);
+  };
+
   const isAdmin = user?.role === 'admin';
 
   if (isLoading) {
@@ -394,11 +434,42 @@ ${building.name} Management System
                     </Button>
                   )}
                 </div>
-              ) : (
+              ) : (() => {
+                const filteredList = getFilteredBookings(status);
+                const allSelected = filteredList.length > 0 && filteredList.every(b => selectedIds.has(b.id));
+                const someSelected = filteredList.some(b => selectedIds.has(b.id));
+                const visibleSelected = filteredList.filter(b => selectedIds.has(b.id));
+                return (
                 <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                  {isAdmin && someSelected && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-200">
+                      <span className="text-sm font-medium text-blue-800">{visibleSelected.length} selected</span>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleBulkCancel}
+                        disabled={isBulkCancelling}
+                        className="ml-2"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        {isBulkCancelling ? 'Cancelling...' : `Cancel ${visibleSelected.length} Booking${visibleSelected.length > 1 ? 's' : ''}`}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="text-blue-700">
+                        Clear selection
+                      </Button>
+                    </div>
+                  )}
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
+                        {isAdmin && (
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={allSelected}
+                              onCheckedChange={() => toggleSelectAll(filteredList)}
+                            />
+                          </TableHead>
+                        )}
                         <TableHead className="font-semibold">Event</TableHead>
                         <TableHead className="font-semibold">Organization</TableHead>
                         <TableHead className="font-semibold">Date & Time</TableHead>
@@ -408,8 +479,16 @@ ${building.name} Management System
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getFilteredBookings(status).map(booking => (
-                        <TableRow key={booking.id} className="hover:bg-slate-50">
+                      {filteredList.map(booking => (
+                        <TableRow key={booking.id} className={`hover:bg-slate-50 ${selectedIds.has(booking.id) ? 'bg-blue-50' : ''}`}>
+                          {isAdmin && (
+                            <TableCell className="w-10">
+                              <Checkbox
+                                checked={selectedIds.has(booking.id)}
+                                onCheckedChange={() => toggleSelect(booking.id)}
+                              />
+                            </TableCell>
+                          )}
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div>
@@ -495,7 +574,8 @@ ${building.name} Management System
                     </TableBody>
                   </Table>
                 </div>
-              )}
+                );
+              })()}
             </TabsContent>
           ))}
         </Tabs>

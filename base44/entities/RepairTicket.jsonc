@@ -1,0 +1,95 @@
+{
+  "name": "RepairTicket",
+  "type": "object",
+  "properties": {
+    "building_id": {
+      "type": "string",
+      "description": "The ID of the building this ticket belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Brief description of the issue"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the problem"
+    },
+    "location": {
+      "type": "string",
+      "description": "Specific location of the issue"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Issue priority level"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "plumbing",
+        "electrical",
+        "hvac",
+        "cleaning",
+        "security",
+        "equipment",
+        "other"
+      ],
+      "description": "Type of repair needed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "open",
+      "description": "Current ticket status"
+    },
+    "reported_by": {
+      "type": "string",
+      "description": "Person who reported the issue"
+    },
+    "contact_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Contact email for updates"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Person assigned to fix the issue"
+    },
+    "image_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photos of the issue"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Notes about how the issue was resolved"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the issue was resolved"
+    }
+  },
+  "required": [
+    "building_id",
+    "title",
+    "description",
+    "location",
+    "category",
+    "reported_by",
+    "contact_email"
+  ]
+}

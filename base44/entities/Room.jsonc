@@ -1,0 +1,72 @@
+{
+  "name": "Room",
+  "type": "object",
+  "properties": {
+    "building_id": {
+      "type": "string",
+      "description": "The ID of the building this room belongs to"
+    },
+    "name": {
+      "type": "string",
+      "description": "Room name"
+    },
+    "building": {
+      "type": "string",
+      "description": "Building name or location"
+    },
+    "capacity": {
+      "type": "number",
+      "description": "Maximum occupancy"
+    },
+    "description": {
+      "type": "string",
+      "description": "Room description and details"
+    },
+    "amenities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Available amenities"
+    },
+    "hourly_rate": {
+      "type": "number",
+      "description": "Hourly rental rate"
+    },
+    "show_hourly_rate": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to display the hourly rate publicly"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Room photo URL"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether room is available for booking"
+    },
+    "color": {
+      "type": "string",
+      "description": "A hex color code for the room, to be displayed in the UI.",
+      "default": "#64748b"
+    }
+  },
+  "required": [
+    "building_id",
+    "name",
+    "capacity"
+  ],
+  "rls": {
+    "read": {
+      "building_id": "{{user.building_id}}"
+    },
+    "write": {
+      "building_id": "{{user.building_id}}",
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

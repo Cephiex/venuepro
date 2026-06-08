@@ -1,0 +1,26 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "building_id": {
+      "type": "string",
+      "description": "ID of the building this user belongs to"
+    },
+    "organization_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of the organizations this user is a member of"
+    },
+    "title": {
+      "type": "string",
+      "description": "User's title or position"
+    },
+    "phone": {
+      "type": "string",
+      "description": "User's phone number"
+    }
+  },
+  "required": []
+}
