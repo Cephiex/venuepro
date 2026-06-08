@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { User, Building } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import {
   Calendar,
   Home,
@@ -205,8 +205,8 @@ function PublicHeader() {
     }
   };
 
-  const handleLogin = async () => {
-    await User.loginWithRedirect(window.location.origin + createPageUrl("Dashboard"));
+  const handleLogin = () => {
+    base44.auth.redirectToLogin(createPageUrl("Dashboard"));
   };
 
   const handleLogout = async () => {
