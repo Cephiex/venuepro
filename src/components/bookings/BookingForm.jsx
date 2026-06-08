@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Organization, Booking } from '@/entities/all'; // Import Booking entity
 import { Button } from "@/components/ui/button";
@@ -34,8 +33,10 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringPattern, setRecurringPattern] = useState({
-    weekOfMonth: 'first',
-    dayOfWeek: 'monday',
+    frequency: 'weekly', // 'weekly' or 'monthly'
+    weekInterval: 1, // every N weeks (for weekly)
+    daysOfWeek: ['monday'], // for weekly: which days; for monthly: single day
+    weekOfMonth: 'first', // for monthly
     startTime: '09:00',
     endTime: '10:00',
     occurrences: 12
@@ -105,8 +106,10 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
       setSelectedRooms([]);
       setIsRecurring(false);
       setRecurringPattern({
+        frequency: 'weekly',
+        weekInterval: 1,
+        daysOfWeek: ['monday'],
         weekOfMonth: 'first',
-        dayOfWeek: 'monday',
         startTime: '09:00',
         endTime: '10:00',
         occurrences: 12
@@ -261,7 +264,7 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
     }
 
     let hours = 0;
-    if (isRecurring && !booking) { // This branch is only taken when creating a NEW recurring series
+    if (isRecurring && !booking) {
         if (!recurringPattern.startTime || !recurringPattern.endTime) return 0;
         const [startHour, startMinute] = recurringPattern.startTime.split(':').map(Number);
         const [endHour, endMinute] = recurringPattern.endTime.split(':').map(Number);
@@ -291,55 +294,78 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
   const calculateRecurringDates = () => {
     if (!isRecurring || !formData.start_datetime || !recurringPattern.startTime || !recurringPattern.endTime) return [];
     
-    const firstMonthDate = new Date(formData.start_datetime);
+    const startDate = new Date(formData.start_datetime);
     const [startHour, startMinute] = recurringPattern.startTime.split(':').map(Number);
     const [endHour, endMinute] = recurringPattern.endTime.split(':').map(Number);
-    
     const dates = [];
+
     const dayMap = {
       'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
       'thursday': 4, 'friday': 5, 'saturday': 6
     };
-    
-    const targetDayOfWeek = dayMap[recurringPattern.dayOfWeek];
-    
-    for (let i = 0; i < recurringPattern.occurrences; i++) {
-      const monthStart = startOfMonth(addMonths(firstMonthDate, i));
-      let targetDate;
-      
-      // Find the specific occurrence of the day in the month
-      switch (recurringPattern.weekOfMonth) {
-        case 'first':
-          targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 1);
-          break;
-        case 'second':
-          targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 2);
-          break;
-        case 'third':
-          targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 3);
-          break;
-        case 'fourth':
-          targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 4);
-          break;
-        case 'last':
-          targetDate = findLastWeekdayOfMonth(monthStart, targetDayOfWeek);
-          break;
-        default:
-          targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 1);
+
+    if (recurringPattern.frequency === 'weekly') {
+      const selectedDays = recurringPattern.daysOfWeek.map(d => dayMap[d]);
+      if (selectedDays.length === 0) return [];
+      const interval = Math.max(1, recurringPattern.weekInterval || 1);
+
+      // Find the Monday of the starting week
+      const weekStart = new Date(startDate);
+      weekStart.setHours(0, 0, 0, 0);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // go to Sunday
+      weekStart.setDate(weekStart.getDate() + 1); // go to Monday as week anchor
+
+      let occurrencesAdded = 0;
+      let weekOffset = 0;
+
+      while (occurrencesAdded < recurringPattern.occurrences) {
+        const weekAnchor = new Date(weekStart);
+        weekAnchor.setDate(weekAnchor.getDate() + weekOffset * 7);
+
+        // Collect all matching days in this week, sorted
+        const weekDates = selectedDays
+          .map(dayNum => {
+            const d = new Date(weekAnchor);
+            // dayNum: 0=Sun...6=Sat; weekAnchor is Monday(1)
+            d.setDate(d.getDate() + ((dayNum + 6) % 7)); // shift so Mon=0
+            return d;
+          })
+          .sort((a, b) => a - b);
+
+        for (const targetDate of weekDates) {
+          if (occurrencesAdded >= recurringPattern.occurrences) break;
+          // Skip dates before the chosen start date
+          if (targetDate < new Date(startDate.toDateString())) continue;
+          const recurringStart = new Date(targetDate);
+          recurringStart.setHours(startHour, startMinute, 0, 0);
+          const recurringEnd = new Date(targetDate);
+          recurringEnd.setHours(endHour, endMinute, 0, 0);
+          dates.push({ start: recurringStart, end: recurringEnd });
+          occurrencesAdded++;
+        }
+        weekOffset += interval;
+        if (weekOffset > 500) break; // safety cap
       }
-      
-      if (targetDate) {
-        // Set the specified time on the calculated date
-        const recurringStart = new Date(targetDate);
-        recurringStart.setHours(startHour, startMinute, 0, 0);
-        
-        const recurringEnd = new Date(targetDate);
-        recurringEnd.setHours(endHour, endMinute, 0, 0);
-        
-        dates.push({
-          start: recurringStart,
-          end: recurringEnd
-        });
+    } else {
+      // Monthly pattern
+      const targetDayOfWeek = dayMap[recurringPattern.daysOfWeek[0] || 'monday'];
+      for (let i = 0; i < recurringPattern.occurrences; i++) {
+        const monthStart = startOfMonth(addMonths(startDate, i));
+        let targetDate;
+        switch (recurringPattern.weekOfMonth) {
+          case 'second': targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 2); break;
+          case 'third':  targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 3); break;
+          case 'fourth': targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 4); break;
+          case 'last':   targetDate = findLastWeekdayOfMonth(monthStart, targetDayOfWeek); break;
+          default:       targetDate = findNthWeekdayOfMonth(monthStart, targetDayOfWeek, 1);
+        }
+        if (targetDate) {
+          const recurringStart = new Date(targetDate);
+          recurringStart.setHours(startHour, startMinute, 0, 0);
+          const recurringEnd = new Date(targetDate);
+          recurringEnd.setHours(endHour, endMinute, 0, 0);
+          dates.push({ start: recurringStart, end: recurringEnd });
+        }
       }
     }
     
@@ -687,67 +713,139 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
                     <div className="flex items-start gap-2">
                       <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <p className="text-sm text-blue-700">
-                        Create multiple bookings that repeat on a specific day pattern each month. Select a start date above to set the first month.
+                        Set up a series of bookings that repeat automatically. Select a start date above to begin from that date.
                       </p>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Week of Month</Label>
-                        <Select 
-                          value={recurringPattern.weekOfMonth} 
-                          onValueChange={(value) => handleRecurringPatternChange('weekOfMonth', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="first">First</SelectItem>
-                            <SelectItem value="second">Second</SelectItem>
-                            <SelectItem value="third">Third</SelectItem>
-                            <SelectItem value="fourth">Fourth</SelectItem>
-                            <SelectItem value="last">Last</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Day of Week</Label>
-                        <Select 
-                          value={recurringPattern.dayOfWeek} 
-                          onValueChange={(value) => handleRecurringPatternChange('dayOfWeek', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="sunday">Sunday</SelectItem>
-                            <SelectItem value="monday">Monday</SelectItem>
-                            <SelectItem value="tuesday">Tuesday</SelectItem>
-                            <SelectItem value="wednesday">Wednesday</SelectItem>
-                            <SelectItem value="thursday">Thursday</SelectItem>
-                            <SelectItem value="friday">Friday</SelectItem>
-                            <SelectItem value="saturday">Saturday</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Number of Months</Label>
-                        <Input 
-                          type="number"
-                          min="1"
-                          max="24"
-                          value={recurringPattern.occurrences}
-                          onChange={(e) => handleRecurringPatternChange('occurrences', parseInt(e.target.value) || 1)}
-                        />
+
+                    {/* Frequency selector */}
+                    <div className="space-y-2">
+                      <Label>Repeat Frequency</Label>
+                      <div className="flex gap-2">
+                        {['weekly', 'monthly'].map(f => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => handleRecurringPatternChange('frequency', f)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                              recurringPattern.frequency === f
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                       <div className="space-y-2">
+                    {recurringPattern.frequency === 'weekly' && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Repeat Every</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                max="12"
+                                value={recurringPattern.weekInterval}
+                                onChange={(e) => handleRecurringPatternChange('weekInterval', parseInt(e.target.value) || 1)}
+                                className="w-20"
+                              />
+                              <span className="text-sm text-slate-600">week(s)</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Number of Occurrences</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="104"
+                              value={recurringPattern.occurrences}
+                              onChange={(e) => handleRecurringPatternChange('occurrences', parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>On these days</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => {
+                              const checked = recurringPattern.daysOfWeek.includes(day);
+                              return (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() => {
+                                    const days = recurringPattern.daysOfWeek;
+                                    handleRecurringPatternChange(
+                                      'daysOfWeek',
+                                      checked ? days.filter(d => d !== day) : [...days, day]
+                                    );
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                    checked
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {day.slice(0, 3).charAt(0).toUpperCase() + day.slice(1, 3)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {recurringPattern.frequency === 'monthly' && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Week of Month</Label>
+                          <Select
+                            value={recurringPattern.weekOfMonth}
+                            onValueChange={(value) => handleRecurringPatternChange('weekOfMonth', value)}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="first">First</SelectItem>
+                              <SelectItem value="second">Second</SelectItem>
+                              <SelectItem value="third">Third</SelectItem>
+                              <SelectItem value="fourth">Fourth</SelectItem>
+                              <SelectItem value="last">Last</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Day of Week</Label>
+                          <Select
+                            value={recurringPattern.daysOfWeek[0] || 'monday'}
+                            onValueChange={(value) => handleRecurringPatternChange('daysOfWeek', [value])}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].map(d => (
+                                <SelectItem key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Number of Months</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="24"
+                            value={recurringPattern.occurrences}
+                            onChange={(e) => handleRecurringPatternChange('occurrences', parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label>Start Time</Label>
-                        <Input 
+                        <Input
                           type="time"
                           value={recurringPattern.startTime}
                           onChange={(e) => handleRecurringPatternChange('startTime', e.target.value)}
@@ -755,32 +853,34 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
                       </div>
                       <div className="space-y-2">
                         <Label>End Time</Label>
-                        <Input 
+                        <Input
                           type="time"
                           value={recurringPattern.endTime}
                           onChange={(e) => handleRecurringPatternChange('endTime', e.target.value)}
                         />
                       </div>
                     </div>
-                    
-                    <div className="text-sm text-slate-600 bg-white p-3 rounded border">
-                      <strong>Pattern:</strong> Every {recurringPattern.weekOfMonth} {recurringPattern.dayOfWeek} at {recurringPattern.startTime} - {recurringPattern.endTime} for {recurringPattern.occurrences} months
-                      {formData.start_datetime && recurringPattern.startTime && recurringPattern.endTime && (
-                        <div className="mt-2 space-y-1">
-                          <strong>Upcoming events:</strong>
-                          {calculateRecurringDates().slice(0, 3).map((date, index) => (
-                            <div key={index} className="text-xs text-slate-700 ml-4">
-                              • {format(date.start, 'MMM d, yyyy')} from {format(date.start, 'h:mm a')} to {format(date.end, 'h:mm a')}
-                            </div>
-                          ))}
-                          {calculateRecurringDates().length > 3 && (
-                            <div className="text-xs text-slate-500 ml-4">
-                              ... and {calculateRecurringDates().length - 3} more events
-                            </div>
-                          )}
+
+                    {formData.start_datetime && recurringPattern.startTime && recurringPattern.endTime && (() => {
+                      const dates = calculateRecurringDates();
+                      return dates.length > 0 ? (
+                        <div className="text-sm text-slate-600 bg-white p-3 rounded border">
+                          <strong>Preview ({dates.length} occurrence{dates.length !== 1 ? 's' : ''}):</strong>
+                          <div className="mt-2 space-y-1">
+                            {dates.slice(0, 4).map((date, index) => (
+                              <div key={index} className="text-xs text-slate-700 ml-4">
+                                • {format(date.start, 'EEE, MMM d, yyyy')} · {format(date.start, 'h:mm a')} – {format(date.end, 'h:mm a')}
+                              </div>
+                            ))}
+                            {dates.length > 4 && (
+                              <div className="text-xs text-slate-500 ml-4">
+                                … and {dates.length - 4} more
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
               </div>
@@ -851,7 +951,7 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
                     <h4 className="font-medium text-blue-800">Selected Rooms:</h4>
                     {calculateTotalCost() > 0 ? (
                       <p className="text-lg font-bold text-blue-800">
-                        {isRecurring ? `Total Cost (${recurringPattern.occurrences} months): $${calculateTotalCost().toFixed(2)}` : `Estimated Cost: $${calculateTotalCost().toFixed(2)}`}
+                        {isRecurring ? `Total Cost (${calculateRecurringDates().length} occurrences): $${calculateTotalCost().toFixed(2)}` : `Estimated Cost: $${calculateTotalCost().toFixed(2)}`}
                       </p>
                     ) : (
                       building?.show_rate_publicly && (
@@ -896,7 +996,7 @@ export default function BookingForm({ open, setOpen, booking, rooms, onSubmit, u
             >
               {booking ? 
                 (booking.recurring_id ? 'Update Series' : 'Update Booking') : 
-                (isRecurring ? `Create ${recurringPattern.occurrences} Recurring Bookings` : 'Submit Request')
+                (isRecurring ? `Create ${calculateRecurringDates().length} Recurring Bookings` : 'Submit Request')
               }
             </Button>
           </SheetFooter>
